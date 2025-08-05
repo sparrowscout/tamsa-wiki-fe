@@ -1,80 +1,73 @@
 'use client';
-import { ChangeEvent, useState } from 'react';
-import { createWorker, ImageLike } from 'tesseract.js';
+import { ChangeEvent, useEffect, useState } from 'react';
+import UploadedImg from './UploadedImg';
+import useOCRTextStore from '@/store/useOCRTextStore';
+import LoadingProcess from './LoadingProcess';
+
+export type ImageArray = {
+  src: string;
+  name: string;
+};
 
 export default function ImageUploader() {
-  const [OCRText, setOCRText] = useState('');
+  const [images] = useState<ImageArray[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const { setTextMap } = useOCRTextStore();
+  const [websocket, setWebSocket] = useState<WebSocket>();
+  const [current, setCurrent] = useState<number>(0);
 
-  const makeOCR = async (image: ImageLike) => {
-    const worker = await createWorker('kor');
+  useEffect(() => {
+    if (!websocket) return;
 
-    // await worker.setParameters({
-    //   tessedit_char_whitelist: '가-힣ㄱ-ㅎㅏ-ㅣ .,!?\'"“”‘’()[]{}:;|/\\1234567890\n',
-    //   preserve_interword_spaces: '1',
-    // });
+    websocket.onmessage = function (event) {
+      const { data } = event;
+      const result = JSON.parse(data);
 
-    const ret = await worker.recognize(image);
-    console.log(ret);
-    console.log(ret.data.text);
+      if (result.status === 'done') {
+        websocket.close();
+        setIsLoading(false);
+        return;
+      }
 
-    await worker.terminate();
-    return ret.data.text;
-  };
+      setTextMap(result.index, { id: result.id, text: result.text });
+      setCurrent(Number(result.index) + 1);
+    };
+  }, [websocket]);
 
   const onChangeImgInput = async (e: ChangeEvent<HTMLInputElement>) => {
     const { files } = e.target;
 
     if (!files) return;
-    const file = files[0];
+
+    setIsLoading(true);
+
+    Array.from(files).forEach((element) => {
+      images.push({ src: URL.createObjectURL(element), name: element.name });
+    });
 
     const formData = new FormData();
-    formData.append('file', file);
 
-    const res = await fetch('http://localhost:8000/ocr', {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      formData.append('files', file);
+      formData.append('ids', file.name);
+      formData.append('indexes', `${i}`);
+    }
+
+    setWebSocket(new WebSocket('ws://localhost:8000/'));
+
+    await fetch('http://localhost:8000/ocr/start', {
       method: 'POST',
       body: formData,
     });
-
-    const data = await res.json();
-    console.log(data);
-    const result = await fixOcrTextWithGPT(data.text);
-    setIsLoading(false);
-    setOCRText(result);
   };
 
-  async function fixOcrTextWithGPT(rawText: string): Promise<string> {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'OCR로 인식된 텍스트를 네가 고쳐줘야돼. 한글이고 오타만 고쳐줘. ',
-          },
-          {
-            role: 'user',
-            content: rawText,
-          },
-        ],
-        temperature: 0.4,
-        max_tokens: 1024,
-      }),
-    });
-
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content?.trim() ?? '';
-  }
-
   return (
-    <>
-      <input type="file" accept="image/*" onChange={onChangeImgInput} />
-      {OCRText}
-    </>
+    <div className="flex justify-center items-center flex-col">
+      <input type="file" accept="image/*" onChange={onChangeImgInput} multiple />
+      {isLoading ? <LoadingProcess current={current} entire={images.length} /> : null}
+      <UploadedImg images={images} />
+    </div>
   );
 }
