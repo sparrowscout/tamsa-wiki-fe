@@ -1,7 +1,13 @@
 import { create } from 'zustand';
 import useCurrentIndexStore from './useCurrentIndexStore';
 
-type OCRData = { id: string; text: string };
+export type QuoteSource = {
+  title: string;
+  author: string;
+  episode: string;
+};
+
+type OCRData = { id: string; content: { body: string; source?: QuoteSource } };
 
 type OCRTextState = {
   textMap: Map<number, OCRData>;
@@ -21,11 +27,13 @@ function replaceWordsByRange(
 ): string {
   if (!sentence) throw new Error('There is no sentence');
 
-  if (start < 0 || end >= sentence.length || start > end) {
+  const 문장 = sentence[0];
+
+  if (start < 0 || end > 문장.length || start > end) {
     throw new Error('Invalid start or end index.');
   }
 
-  const updatedWords = [sentence.slice(0, start), newWords, sentence.slice(end)];
+  const updatedWords = [문장.slice(0, start), newWords, 문장.slice(end)];
   return updatedWords.join('');
 }
 
@@ -44,10 +52,10 @@ const useOCRTextStore = create<OCRTextState & OCRTextAction>()((set) => ({
 
       if (!oldValue) throw new Error();
 
-      const newSentence = replaceWordsByRange(oldValue.text, indexStart, indexEnd, word);
+      const newSentence = replaceWordsByRange(oldValue.content.body, indexStart, indexEnd, word);
       const newMap = new Map(state.textMap).set(currentIndex, {
         ...oldValue,
-        text: newSentence,
+        content: { ...oldValue.content, body: newSentence },
       });
 
       return { textMap: newMap };
@@ -59,10 +67,10 @@ const useOCRTextStore = create<OCRTextState & OCRTextAction>()((set) => ({
 
       if (!oldValue) throw new Error();
 
-      const newSentence = oldValue.text.replaceAll(typo, fixed);
+      const newSentence = oldValue.content.body.replaceAll(typo, fixed);
       const newMap = new Map(state.textMap).set(currentIndex, {
         ...oldValue,
-        text: newSentence,
+        content: { ...oldValue.content, body: newSentence },
       });
 
       return { textMap: newMap };

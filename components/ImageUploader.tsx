@@ -29,7 +29,17 @@ export default function ImageUploader() {
         return;
       }
 
-      setTextMap(result.index, { id: result.id, text: result.text });
+      setTextMap(result.index, {
+        id: result.id,
+        content: {
+          body: result.text,
+          source: {
+            title: result.source.title,
+            author: result.source.author,
+            episode: result.source.episode,
+          },
+        },
+      });
       setCurrent(Number(result.index) + 1);
     };
   }, [websocket]);

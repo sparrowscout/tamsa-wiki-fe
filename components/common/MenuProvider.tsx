@@ -19,4 +19,5 @@ export default function MenuProvider() {
         </div>
       </>
     );
+  else return null;
 }

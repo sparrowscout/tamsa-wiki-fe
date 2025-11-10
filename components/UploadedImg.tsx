@@ -15,6 +15,7 @@ export default function UploadedImg({ images }: UploadedImgProps) {
   const { textMap } = useOCRTextStore();
 
   const onClickSlide = (e: MouseEvent) => {
+    console.log(e);
     const { clientX, currentTarget } = e;
     const isForward = currentTarget.clientWidth * 0.5 < clientX;
 
@@ -26,28 +27,32 @@ export default function UploadedImg({ images }: UploadedImgProps) {
   };
 
   return (
-    <div className="w-full h-full flex justify-center items-center" onClick={onClickSlide}>
-      <div id="center" className="relative h-[600px]">
-        {images.map((item, index) => {
-          const isForward = currentIndex > index ? -1 : 1;
-          const distance = Math.abs(currentIndex - index);
-          const isCurrentIndex = currentIndex === index;
-          const currentItem = textMap.get(currentIndex);
+    <div className="relative w-full h-full overflow-hidden flex justify-center items-center">
+      <div id="center" className="w-full h-dvh relative" onClick={onClickSlide} />
+      {images.map((item, index) => {
+        const isForward = currentIndex > index ? -1 : 1;
+        const distance = Math.abs(currentIndex - index);
+        const isCurrentIndex = currentIndex === index;
+        const currentItem = textMap.get(currentIndex);
 
-          return (
-            <ImageDummy
-              key={item.name}
-              $left={distance * isForward * 50 - 50}
-              $top={distance * 10}
-              $isCurrent={isCurrentIndex}
-              $distance={distance}
-            >
+        return (
+          <ImageDummy
+            key={item.name}
+            $left={distance * isForward * 50 - 50}
+            $top={distance * 10}
+            $isCurrent={isCurrentIndex}
+            $distance={distance}
+          >
+            <div className="w-dvwㅋ h-[600px]  bg-blue-50">
               <SingleImage name={item.name} src={item.src} />
-              {isCurrentIndex && currentItem ? <OCRQuotes text={currentItem.text} /> : null}
-            </ImageDummy>
-          );
-        })}
-      </div>
+            </div>
+
+            {isCurrentIndex && currentItem ? (
+              <OCRQuotes body={currentItem.content.body} source={currentItem.content.source} />
+            ) : null}
+          </ImageDummy>
+        );
+      })}
     </div>
   );
 }
@@ -67,4 +72,5 @@ const ImageDummy = styled.div<{
   filter: ${({ $isCurrent }) => ($isCurrent ? 'blur(0)' : 'blur(2px)')};
   transition: transform 0.3s ease;
   transition-duration: 0.3s;
+  background-color: red;
 `;

@@ -5,14 +5,17 @@ import ContextMenu from './common/ContextMenu';
 import styled from 'styled-components';
 import useModal from '@/hooks/useModal';
 import FixWord from './FixWordModal';
+import { QuoteSource } from '@/store/useOCRTextStore';
 
 interface OCRQuotesProps {
-  text: string;
+  body: string;
+  source?: QuoteSource;
 }
 
-export default function OCRQuotes({ text }: OCRQuotesProps) {
+export default function OCRQuotes({ body, source }: OCRQuotesProps) {
   const quotesRef = useRef<HTMLTextAreaElement | null>(null);
   const [height, setHeight] = useState<number>(0);
+
   const { openMenu } = useContextMenu();
   const { openModal, closeModal } = useModal();
 
@@ -69,7 +72,16 @@ export default function OCRQuotes({ text }: OCRQuotesProps) {
     );
   };
 
-  return <OCRTextArea ref={quotesRef} value={text} readOnly $boxHeight={height} />;
+  return (
+    <div>
+      <OCRTextArea ref={quotesRef} value={body} readOnly $boxHeight={height} />
+      {source ? (
+        <span>
+          - {source.title} {source.episode}화 | {source.author}
+        </span>
+      ) : null}
+    </div>
+  );
 }
 
 const OCRTextArea = styled.textarea<{ $boxHeight: number }>`
